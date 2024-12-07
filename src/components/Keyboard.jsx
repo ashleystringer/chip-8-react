@@ -34,7 +34,7 @@ export default function Keyboard({ setKeyboardObject }) {
   */
 
     function onKeyDown(e){
-      console.log(e.keyCode);
+      //console.log(e.keyCode);
       const keyCode = e.keyCode;
       setPressedKey(KEYMAP[keyCode]);
 

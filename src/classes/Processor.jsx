@@ -4,15 +4,15 @@ import { Memory } from "./Memory";
 
 export class Processor{
     constructor(graphics, keyboard){
-        this.stack = new Array(16);
-        this.registers = new Array(16);
+        this.stack = new Array(16).fill(0);
+        this.registers = new Array(16).fill(0);
         this.index = 0;
         this.pc = 0x200;
-        this.delay = 60;
-        this.sound = 60;
+        this.delayTimer = 60;
+        this.soundTimer = 60;
         this.speed = (600/1000);
         this.graphics = graphics;
-        this.keyboard = keyboard;
+        this.keyboardObject = null;
         this.memory = new Memory();
         this.isFileLoaded = false;
     }
@@ -37,10 +37,6 @@ export class Processor{
         - DXYN - Draw a sprite at (VX, VY) with width 8 and height N
     */
 
-    initialize(){
-    
-    }
-
     async loadNewGame(rom){
       console.log("loadNewGame");
 
@@ -48,8 +44,14 @@ export class Processor{
       this.isFileLoaded = true;
 
       this.pc = 0x200;
+      this.stack = new Array(16).fill(0);
+      this.registers = new Array(16).fill(0);
       this.graphics.clear();
       this.graphics.render();
+    }
+    
+    changeKeyboardObject(keyboardObject){
+      this.keyboardObject = keyboardObject;
     }
 
     pauseGame(pauseValue){
@@ -58,6 +60,7 @@ export class Processor{
 
     cycle(){
           this.graphics.render();
+          this.updateTimers();
 
           for(let i = 0; i < 10; i++){
               const instruction = this.fetchInstruction();
@@ -65,9 +68,18 @@ export class Processor{
               console.log(`this.pc: ${this.pc}, instruction: ${instruction.toString(16)}`);
 
               this.execute(instruction);
-              
-              this.pc += 2;
+
+              //this.pc += 2;
           }        
+    }
+
+    updateTimers(){
+      if(this.delayTimer > 0){
+        this.delayTimer--;
+      }
+      if(this.soundTimer > 0){
+        this.soundTimer--;
+      }
     }
 
     fetchInstruction(){
@@ -83,20 +95,25 @@ export class Processor{
       const nnn = this.memAddress(instruction);
 
       //console.log(`instruction: ${instruction.toString(16)}`);
+      console.log(`instruction: ${instruction.toString(16)}, x: ${x}, y: ${y}`)
+      //console.log(`this.registers[x]: ${this.registers[x]}, this.registers[y]: ${this.registers[y]}`);
 
+      this.pc += 2;
 
       switch(opcode){
         case 0x0:
-            //console.log("0x0");
-            this.x0(opcode);
+            console.log("0x0");
+            this.x0(instruction);
           break;
         case 0x1:
             this.pc = nnn;
+            //this.pc -= 2;
             //console.log("0x1");
           break;
         case 0x2:
             this.stack.push(this.pc); //Where does this.stack lead to?
             this.pc = nnn;
+            //this.pc -= 2;
             //console.log("0x2");
           break;
         case 0x3:
@@ -116,14 +133,14 @@ export class Processor{
           break;
         case 0x6:
             this.registers[x] = nn;
-            //console.log("0x6");
+            console.log("0x6");
           break;
         case 0x7: 
             this.registers[x] += nn;
-            //console.log("0x7");
+            console.log("0x7");
           break;
         case 0x8:
-            this.x8(opcode);
+            this.x8(instruction);
           break;
         case 0x9:
           if(this.registers[x] !== this.registers[y]){
@@ -149,6 +166,7 @@ export class Processor{
                 if((sprite & 0x80) > 0){
                   //console.log(`instruction: ${instruction.toString(16)}, x: ${x}, y: ${y}`)
                   //console.log(`x: ${x}, y: ${y}, (registers[x] + col): ${this.registers[x] + col}, (registers[y] + row): ${this.registers[y] + row}`);
+                  //console.log(`this.registers[x]: ${this.registers[x]}, this.registers[y]: ${this.registers[y]}`);
                   if(this.graphics.setPixel(this.registers[x] + col, this.registers[y] + row)){
                     this.registers[0xF] = 1;
                   }
@@ -160,18 +178,24 @@ export class Processor{
             console.log("0xD");
           break;
           case 0xE:
-              this.xE(opcode);
+              console.log("0xE");
+              this.xE(instruction);
             break;
           case 0xF:
-              this.xF(opcode);
+              this.xF(instruction);
             break;
+          default:
+            console.log("Not a valid opcode");
       }
+
+      //this.pc += 2; 
 
     }
 
   x0(opcode){
-
     const nn = this.secondByte(opcode);
+
+    //console.log(`opcode: ${opcode}, x0 function, nn: ${nn}`);
 
     switch (nn) {
       case 0xE0:
@@ -179,18 +203,20 @@ export class Processor{
         break;
       case 0xEE:
         //return subroutine
+        console.log('0xEE');
         const address = this.stack.pop();
+        console.log(`address: ${address}`);
         this.pc = address;
         break;
     }
 
   }
 
-  x8(opcode){
-    const n = this.fourthNibble(opcode);
+  x8(instruction){
+    const n = this.fourthNibble(instruction);
 
-    const x = this.secondNibble(opcode);
-    const y = this.thirdNibble(opcode);
+    const x = this.secondNibble(instruction);
+    const y = this.thirdNibble(instruction);
 
     switch (n) {
       case 0x0:
@@ -206,26 +232,44 @@ export class Processor{
         this.registers[x] ^= this.registers[y];
         break;
       case 0x4:
+        if ((this.registers[x] + this.registers[y]) > 0xFF){
+          this.registers[0xF] = 1;
+        }else{
+          this.registers[0xF] = 0;
+        }
         this.registers[x] += this.registers[y];
         break;
       case 0x5:
+        if(this.register[x] > this.registers[y]){
+          this.registers[0xF] = 1;
+        }else{
+          this.registers[0xF] = 0;
+        }
         this.registers[x] -= this.registers[y];
         break;
       case 0x6:
+        this.registers[0xF] = (this.registers[x] & 0x1); 
+
         this.registers[x] >>= 1;
         break;
       case 0x7:
+        if (this.registers[y] > this.registers[x]){
+          this.registers[0xF] = 1;
+        }else{
+          this.registers[0xF] = 0;
+        }
         this.registers[x] = this.registers[y] - this.registers[x];
         break;
       case 0xe:
+        this.registers[0xF] = (this.registers[x] & 0x80);
         this.registers[x] <<= 1;
         break;
     }
   }
 
-  xE(opcode){
-    const x = this.secondNibble(opcode);
-    const n = this.fourthNibble(opcode);
+  xE(instruction){
+    const x = this.secondNibble(instruction);
+    const n = this.fourthNibble(instruction);
 
     switch (n) {
       case 0xE:
@@ -237,17 +281,22 @@ export class Processor{
         break;
       case 0x1:
         //skips next instruction if key isn't pressed
-        
-        if(this.registers[x] !== this.keyboard.pressedKey){
+
+        console.log('EXA1');
+        console.log(`this.keyBoardObject`);
+        console.log(this.keyboardObject);
+        //console.log(`this.keyboard.pressedKey: ${this.keyboard.pressedKey}`);
+
+        if(this.registers[x] !== this.keyboardObject.pressedKey){
           this.pc += 2;
         }        
         break;
     }
   }
 
-  xF(opcode){
-    const nn = this.secondByte(opcode);
-    const x = this.secondNibble(opcode);
+  xF(instruction){
+    const nn = this.secondByte(instruction);
+    const x = this.secondNibble(instruction);
 
     switch (nn) {
       case 0x07:
@@ -268,7 +317,7 @@ export class Processor{
         this.index += this.registers[x];
         break;
       case 0x29:
-        this.index = this.registers[x];
+        this.index = (this.registers[x] * 5)
         break;
       case 0x33:
         this.memory.memory[this.index] = this.registers[x] / 100;

@@ -28,7 +28,7 @@ export class Graphics{
     }
 
     setPixel(x, y){
-        console.log("setPixel");
+        //console.log("setPixel");
 
         if(x > this.columns){
             x -= this.columns;
@@ -41,6 +41,9 @@ export class Graphics{
         }else if(y < 0){
             y += this.rows;
         }
+
+        //console.log(`x: ${x}, y: ${y}`);
+
         let pixelLoc = x + (y * this.columns);
 
         this.screen[pixelLoc] ^= 1;
@@ -49,7 +52,7 @@ export class Graphics{
     }
     render(){
         
-        console.log("render");
+        //console.log("render");
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -69,6 +72,9 @@ export class Graphics{
                 this.ctx.fillRect(x, y, this.scale, this.scale);
             }
         }
+
+        //console.log("this.screen");
+        //console.table(this.screen);
     
     }
     clear(){

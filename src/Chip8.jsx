@@ -48,6 +48,10 @@ export default function Chip8() {
 
     }, [isPaused]);
 
+    useEffect(() => {
+        processor.changeKeyboardObject(keyboardObject);
+    }, [keyboardObject]);
+
   return (
     <>
       <div>Chip8</div>

@@ -59,8 +59,12 @@ export class Memory{
           this.memory[0x200 + i] = arrayRom[i];
         }
 
+        let array = arrayRom.map(el => {
+            return el.toString(16);
+         });
         console.log("this.memory");
-        console.table(this.memory);
+        //console.table(this.memory);
+        console.table(array);
 
         /*console.log(`arrayRom.length: ${arrayRom.length}`);
         console.log("arrayRom");
